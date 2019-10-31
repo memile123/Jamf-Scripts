@@ -15,7 +15,7 @@
 # $9 = Open App Path
 
 #Defining the Sender ID as self service due to setting the Sender ID as the actual app being updated would often cause the app to crash
-sender="com.jamfsoftware.selfservice.mac"
+sender="$5"
 #Jamf parameters can't be passed into a function, redefining the app path to be used within the funciton
 quitPath="$8"
 openPath="$9"
