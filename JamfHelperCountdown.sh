@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Displays a dialog to the end user with a five minute countdown. If the countdown reaches 0:00 or the user clicks the button, the dialog disappears allowing the remainder of the workflow to proceed.
+# Displays a dialog to the end user with a ten minute countdown. If the countdown reaches 0:00 or the user clicks the button, the dialog disappears allowing the remainder of the workflow to proceed.
 
 /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper \
 -windowType utility \
@@ -12,7 +12,7 @@
 This process will take about an hour and your computer may restart multiple times. Leave your computer connected to power and do not move or close your laptop.
 
 To begin the upgrade immediately, press the 'Upgrade Now' button." \
--icon "/Applications/Install macOS Big Sur.app/Contents/Resources/InstallAssistant.icns" \
+-icon "/Applications/Install macOS Catalina.app/Contents/Resources/InstallAssistant.icns" \
 -iconSize 256 \
 -button1 "Upgrade Now" \
 -defaultButton 1 \
