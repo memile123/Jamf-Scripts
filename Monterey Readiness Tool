@@ -185,7 +185,7 @@ if [[ $System_OSVersion_Check == 3 ]]; then
 fi
 
 # Jamf Helper Setup
-jamfHelp_Description="Computer Model: "$System_Model_Status"\nOperating System:"$System_OSVersion_Status"\nAvaiable Free Space: "$System_FreeSpace_Status"\nAvaiable Memory:"$System_Memory_Status"\nLeagcy Applications:"$Application_LeagcyApps_Status"\n(32 Bit Apps)\n"$macOSMontereyOverallCompatibility_Status""
+jamfHelp_Description="Computer Model: "$System_Model_Status"\nOperating System:"$System_OSVersion_Status"\Available Free Space: "$System_FreeSpace_Status"\nAvailable Memory:"$System_Memory_Status"\nLeagcy Applications:"$Application_LeagcyApps_Status"\n(32 Bit Apps)\n"$macOSMontereyOverallCompatibility_Status""
 jamfHelp_Description2="$macOSMontereyOverallCompatibility_Status"
 jamfHelper_icon="/var/tmp/LU/macOSMontereyIcon.png"
 jamfHelper_location="/Library/Application Support/JAMF/bin/jamfHelper.app/Contents/MacOS"
