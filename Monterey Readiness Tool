@@ -1,0 +1,206 @@
+#!/bin/bash
+
+#######################################
+# macOS Monterey Upgrade System Check #
+#######################################
+
+# 
+# Version: 1.0.0
+# Description: Allows for users to check if their system is ready for macOS Monterey.
+#              It checks for System Hardware (Model, Storage, RAM), Appilcations
+#              (32-Bit Apps, Potential Problem Apps), and Other Settings That Will Affect The Upgrade
+
+cd /
+
+#############
+# Varaibles #
+#############
+
+# General Varaibles
+Logged_User=$(logname)
+
+# System Info
+System_ModelID=$(/usr/libexec/PlistBuddy -c "print :'CPU Names':$(system_profiler SPHardwareDataType | awk '/Serial/ {print $4}' | cut -c 9-)-en-US_US" ~/Library/Preferences/com.apple.SystemProfiler.plist)
+System_OSVersion=$(sw_vers -productVersion)
+System_FreeSpace=$(diskutil info / | awk -F '[()]' '/Free Space|Available Space/ {print $2}' | sed -e 's/\ Bytes//')
+System_Memory=$(sysctl -n hw.memsize)
+
+# Application Info
+Application_LeagcyApps=$(mdfind "(kMDItemExecutableArchitectures == 'i386') && (kMDItemExecutableArchitectures != 'x86_64')")
+Application_LeagcyApps_Log=$(echo "$Application_LeagcyApps" | tee "/var/log/LeagcyApps.txt")
+#############
+# Core Code #
+#############
+
+
+# System Model Checker
+# Uses if statement to look though System_ModelID varaible for year number comparsion
+# https://www.apple.com/macos/monterey/
+if [[ "$System_ModelID" == *"MacBook Pro"* ]]; then
+  Model_YearCheck=$(echo "$System_ModelID"| rev | cut -d" " -f1 | rev | tr -d "." | tr "\n" "," | grep -o '[a-z0-9]*')
+    if [[ $Model_YearCheck -ge 2015 ]]; then
+      System_Model_Check=1
+    else
+      System_Model_Check=0
+    fi
+elif [[ "$System_ModelID" == *"MacBook Air"* ]]; then
+    if [[ $Model_YearCheck -ge 2015 ]]; then
+      System_Model_Check=1
+    else
+      System_Model_Check=0
+    fi
+elif [[ "$System_ModelID" == *"MacBook"* ]]; then
+    if [[ $Model_YearCheck -ge 2016 ]]; then
+      System_Model_Check=1
+    else
+      System_Model_Check=0
+    fi
+elif [[ "$System_ModelID" == *"iMac"* ]]; then
+    if [[ $Model_YearCheck -ge 2015 ]]; then
+      System_Model_Check=1
+    else
+      System_Model_Check=0
+    fi
+elif [[ "$System_ModelID" == *"iMac Pro"* ]]; then
+    if [[ $Model_YearCheck -ge 2017 ]]; then
+      System_Model_Check=1
+    else
+      System_Model_Check=0
+    fi
+elif [[ "$System_ModelID" == *"Mac mini"* ]]; then
+    if [[ $Model_YearCheck -ge 2014 ]]; then
+      System_Model_Check=1
+    else
+      System_Model_Check=0
+    fi
+elif [[ "$System_ModelID" == *"Mac Pro"* ]]; then
+    if [[ $Model_YearCheck -ge 2013 ]]; then
+      System_Model_Check=1
+    else
+      System_Model_Check=0
+    fi
+fi
+
+# Installed Operating System Checker
+# Checks Installed OS For Recommened Upgrade Path For Use Of Next Step Of Checking Free Space
+# Also Bash Does Not With Decimals So We Have To Round Up The OS
+# The Check Will Flag OS Under Sierra With A 2 In The System_OS_Check Varaible
+# Making It Were More Storage Will Be Required
+# https://support.apple.com/en-us/HT212551
+System_OSVersion_Clean=$(echo ${System_OSVersion%.*})
+if [[ "$System_OSVersion_Clean" > 10.12 ]] && [[ "$System_Model_Check" == 1 ]]; then
+  System_OSVersion_Check=1
+  if [[ "$System_OSVersion_Clean" =~ 12 ]]; then
+    System_OSVersion_Check=3
+  fi
+else
+  System_OSVersion_Check=0
+fi
+
+# Free Space Checker For Upgrade
+# Checks Free Space Is Enough For Upgrade
+if [[ "$System_OSVersion_Check" == 1 ]] || [[ "$System_OSVersion_Check" == 3 ]]; then
+  if [[ "$System_FreeSpace" -ge 27917287424 ]]; then
+    System_FreeSpace_Check=1
+  else
+    System_FreeSpace_Check=0
+  fi
+elif [[ "$System_OSVersion_Check" == 2 ]]; then
+  if [[ "$System_FreeSpace" -ge 47244640256 ]]; then
+    System_FreeSpace_Check=1
+  else
+    System_FreeSpace_Check=0
+  fi
+else
+  System_FreeSpace_Check=2
+fi
+
+# RAM Checker For Upgrade
+# According to Apple, 4GB Is Required For Usage macOS Monterey
+if [[ "$System_Memory" -ge 4294967296 ]]; then
+  System_Memory_Check=1
+else
+  System_Memory_Check=0
+fi
+
+# Leagcy Application (32-Bit) Checker
+# Looks for 32-Bit Apps installed/on the computer, for user to remove/upgrade
+if [[ -z "$Application_LeagcyApps" ]]; then
+  Application_LeagcyApps_Check=0
+else
+  Application_LeagcyApps_Check=1
+fi
+
+
+# Status Code To Message Converter
+# Takes Check Varaibles and Shows It As Status Messages For Platyus/Jamf
+if [[ "$System_Model_Check" == 1 ]]; then
+  System_Model_Status="\t✅ - Supported ("$System_ModelID")"
+else
+  System_Model_Status="\t❌ - Not Supported ("$System_ModelID")"
+fi
+
+if [[ "$System_OSVersion_Check" == 1 ]] || [[ "$System_OSVersion_Check" == 3 ]]; then
+  System_OSVersion_Status="\t✅ - Supported ("$System_OSVersion")"
+else
+  System_OSVersion_Status="\t❌ - Not Supported (macOS "$System_OSVersion")"
+fi
+
+if [[ "$System_FreeSpace_Check" == 1 ]]; then
+  System_FreeSpace_Status="\t✅ - Supported (26GB Required)"
+elif [[ "$System_FreeSpace_Check" == 2 ]]; then
+  System_FreeSpace_Status="\t✅ - Supported (46GB Required)"
+else
+  System_FreeSpace_Status="\t❌ - Not Supported (Not Enough Space)"
+fi
+
+if [[ "$System_Memory_Check" == 1 ]]; then
+  System_Memory_Status="\t✅ - Supported"
+else
+  System_Memory_Status="\t❌ - Not Supported"
+fi
+
+if [[ "$Application_LeagcyApps_Check" == 0 ]]; then
+  Application_LeagcyApps_Status="\t✅ - No Legacy Apps Installed"
+else
+  Application_LeagcyApps_Status="\t⚠️ - Legacy Apps Detected"
+fi
+
+# Final Outcome Cal
+# Caluates Based Check Varaibles To See If Computer Can Really Upgrade To macOS Monterey
+echo "$System_OSVersion_Check"
+if [[ System_Model_Check == 0 ]] || [[ System_Memory_Check == 0 ]]; then
+  macOSMontereyOverallCompatibility_Status="\nSorry, Your Computer Is Not Compatibile With macOS Monterey\t For Questions About macOS Monterey, Please Contact The IT Helpdesk"
+elif [[ System_FreeSpace_Check == 0 ]]; then
+  macOSMontereyOverallCompatibility_Status="\nSorry, Your Computer Does Not Have Enough Free Space For The macOS Monterey Upgrade\t For Questions About macOS Monterey, Please Contact The IT Helpdesk"
+else
+  if [[ $System_OSVersion_Check == 3 ]]; then
+    macOSMontereyOverallCompatibility_Status="\nLooks Like Your Machine Is Running Monterey, You Can Always Re-Install It!\t For Questions About macOS Monterey, Please Contact The IT Helpdesk"
+  else
+    macOSMontereyOverallCompatibility_Status="\nLooks Like Your Computer Is Ready For macOS Monterey!\t For Questions About macOS Monterey, Please Contact The IT Helpdesk"
+  fi
+fi
+if [[ $System_OSVersion_Check == 3 ]]; then
+  macOSMontereyOverallCompatibility_Status="\nLooks Like Your Machine Is Running Monterey, You Can Always Re-Install It!\t For Questions About macOS Monterey, Please Contact The IT Helpdesk"
+fi
+
+# Jamf Helper Setup
+jamfHelp_Description="Computer Model: "$System_Model_Status"\nOperating System:"$System_OSVersion_Status"\nAvaiable Free Space: "$System_FreeSpace_Status"\nAvaiable Memory:"$System_Memory_Status"\nLeagcy Applications:"$Application_LeagcyApps_Status"\n(32 Bit Apps)\n"$macOSMontereyOverallCompatibility_Status""
+jamfHelp_Description2="$macOSMontereyOverallCompatibility_Status"
+jamfHelper_icon="/var/tmp/LU/macOSMontereyIcon.png"
+jamfHelper_location="/Library/Application Support/JAMF/bin/jamfHelper.app/Contents/MacOS"
+jamfHelp_DescriptionClean=$( echo -e "$jamfHelp_Description" \ | column -t -s $'\t' )
+
+cd /
+"$jamfHelper_location"/jamfHelper -windowType utility -title "macOS Monterey Compatibility Check" -heading "Are You Ready For macOS Monterey?" -description "$jamfHelp_DescriptionClean" -button1 "Exit" -button2 "Leagcy Apps"
+exit_code=$(echo $?)
+
+# Button Press Statement
+if [[ "$exit_code" == 2 ]]; then
+  if [[ "$Application_LeagcyApps_Check" == 1 ]]; then
+    open -a TextEdit "/var/log/LeagcyApps.txt"
+  else
+    "$jamfHelper_location"/jamfHelper -windowType utility -title "macOS Monterey Compatibility Check" -heading "Nothing Here To See..." -description "Yup, No Legacy Apps To See Here" -button1 "Exit"
+  fi
+fi
+exit 0
